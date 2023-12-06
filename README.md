@@ -21,6 +21,11 @@
 Google Colaboratoryで実行できるようにしてあります．
 
 ただし，パスの変更はご自身で行ってください．
+
+# メスバウワー実験に関する参考文献
+### Synchrotron-Radiation-Based Energy-Domain Mössbauer Spectroscopy, Nuclear Resonant Inelastic Scattering, and Quasielastic Scattering Using Mössbauer Gamma Rays
+
+https://link.springer.com/chapter/10.1007/978-981-15-9422-9_2
 # 統計モデルや機械学習に関する参考文献
 ### 現代数理統計学の基礎
 確率モデルや統計モデル，統計的推論に関する基本的な知識の参考にしました．
