@@ -1,0 +1,806 @@
+---
+title: "discrete multi- dimensional SE-NBD process"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=FALSE}
+rm(list=ls()) 
+library(MASS)
+library(data.table)
+library(gtools)
+library(igraph)
+getwd()
+```
+
+```{r,echo=FALSE}
+data<-list()
+
+#lf <- list.files(path = "/home/hattori/デスクトップ/Hawkes_hisakado/Hawkes_1115_monthly",full.names = TRUE) 
+lf <- list.files(path = "/home/hattori/デスクトップ/Hawkes_hisakado/Hawkes_1115_quarter_new",full.names = TRUE) 
+name<-list.files(path = "/home/hattori/デスクトップ/Hawkes_hisakado/Hawkes_1115_quarter_new",full.names = FALSE) 
+
+for (i in 1:13) {
+  data[[i]]<-fread(lf[i] , header = TRUE)
+  names(data[[i]])[which(names(data[[i]])=="Up/Down")]<-"date"
+  data[[i]]$date<-as.Date(data[[i]]$date, format = "%m/%d/%Y")
+}
+data[[2]]
+```
+
+```{r  fig.width=12,fig.height=7,echo=FALSE}
+par(mfrow=c(3,3))
+par(oma = c(0, 0, 0, 0)); par(mar = c(4, 4, 3, 1))
+i<-0
+while (i<13) {
+  i<-i+1
+plot(data[[i]]$date,data[[i]]$Defaulted,type = "l",main=name[i])
+acf(data[[i]]$Defaulted,lag.max = length(data[[i]]$Defaulted),main="")
+pacf(data[[i]]$Defaulted,lag.max = length(data[[i]]$Defaulted),main="")
+}
+```
+
+
+```{r}
+AIC_fun<-function(x){
+  I      <-length(x)
+
+res<-fitdistr(x, densfun = "negative binomial")
+alpha<-res$estimate[1]
+mu<-res$estimate[2]
+p<-alpha/(alpha+mu)
+
+df2<-data.frame(AIC=AIC(res),alpha=alpha,p=p,mu=mu)
+
+#-------------------2-------------------
+
+ll_NBD_d0_r<- function(x){
+  return(function(ps){
+    N<-length(x)
+    ll<-0.0
+    lam<-exp(ps[1])
+    p<-1/(1+exp(-ps[2]))
+
+    for(t in 1:(N)){
+    ll<-ll+dnbinom(x[t],size=lam,p=p,log=TRUE)
+    }
+    return(ll)
+  }
+  )
+}
+
+NBD_exp<-optim(c(0.0,0.0),ll_NBD_d0_r(x),hessian=TRUE,control=list(fnscale=-1))
+  lam<-exp(NBD_exp$par[1])
+  p<-1/(1+exp(-NBD_exp$par[2]))
+  AIC<-(-NBD_exp$value+2)*2
+  BIC<--2*NBD_exp$value+2*log(I)
+
+df3<-data.frame(AIC=AIC,BIC=BIC,alpha=lam,"p"=p,mu=lam*(1-p)/p)
+
+#------------------------------------------------------
+return( list(df2,df3) )
+}
+```
+
+
+```{r}
+df<-data.frame()
+df1<-data.frame()
+
+for (i in 1:13) {
+df <-rbind(df,AIC_fun(data[[i]]$Defaulted)[[1]])
+df1<-rbind(df1,AIC_fun(data[[i]]$Defaulted)[[2]])
+}
+df
+df1
+```
+
+
+
+## -----
+
+$$
+X_{t+1}\sim\mathrm{NBD}(\mathrm{size}=K_t,\mathrm{prob}=\frac{K_0}{M_0+K_0}),\quad t\ge0
+$$
+
+$$
+M_t=M_0+M_0/L_0\sum_{j=1}^M\sum_{s=1}^t X_s\hat{d}_{t-s},\quad t\ge 1
+$$
+
+$$
+K_t=K_0+K_0/L_0\sum_{s=1}^t X_s\hat{d}_{t-s},\quad t\ge 1
+$$
+
+$$
+{\hat{d}}^t=r^t
+$$
+
+$$
+\begin{eqnarray}
+K_n=K_0+(K_{n-1}-K_0)r+K_0/L_0X_n
+\end{eqnarray}
+$$
+
+
+```{r,echo=FALSE}
+AIC_fun<-function(x){
+  
+I<-length(x)
+
+#-------------------NBD-------------------
+
+ll_NBD_d0_r<- function(x){
+  return(function(ps){
+    N<-length(x)
+    ll<-0.0
+    lam<-exp(ps[1])
+    p<-1/(1+exp(-ps[2]))
+    n<-1/(1+exp(-ps[3]))
+    r<-1/(1+exp(-ps[4]))
+    d0<-n*(1-r)/(1/p-1)
+    
+    t<-1
+    alpha_t<-lam
+    ll<-ll+dnbinom(x[t],size=alpha_t,p=p,log=TRUE)
+    for(t in 2:(N)){
+    alpha_t<-(alpha_t-lam)*r+d0*x[t-1]+lam
+    ll<-ll+dnbinom(x[t],size=alpha_t,p=p,log=TRUE)
+    }
+    return(ll)
+  }
+  )
+}
+
+NBD_exp<-optim(c(0.0,0.0,0.0,0.0),ll_NBD_d0_r(x),method="L-BFGS-B",hessian=TRUE,control=list(fnscale=-1))
+  lam<-exp(NBD_exp$par[1])
+  p<-1/(1+exp(-NBD_exp$par[2]))
+  n<-1/(1+exp(-NBD_exp$par[3]))
+  r<-1/(1+exp(-NBD_exp$par[4]))
+  d0<-n*(1-r)/(1/p-1)
+  mu<-lam*(1/p-1)/(1-n)
+AIC<-(-NBD_exp$value+4)*2
+BIC<--2*NBD_exp$value+4*log(I)
+
+df<-data.frame(AIC=AIC,K0=lam,M0=lam*(1/p-1),"M0/K0"=(1/p-1),L0=lam*(1/p-1)/(n*(1-r)),beta=r,mu,p,n)
+
+#---------------------------------------
+
+return( list(df) )
+}
+```
+
+```{r,echo=FALSE}
+#-------------------NBD-------------------
+seAIC_1<-function(x){
+  
+I<-length(x)
+
+seNBD<- function(x){
+  return(function(ps){
+    
+    N<-length(x)
+    ll<-0.0
+    r<-1/(1+exp(-ps[1]))
+    K0<-exp(ps[2])
+    M0<-exp(ps[3])
+    L0<-exp(ps[4])
+    
+    t<-1
+    K<-K0
+    ll<-ll+dnbinom(x[t],size=K,p=K0/(M0+K0),log=TRUE)
+    for(t in 2:(N)){
+    K<-(K-K0)*r+K0/L0*x[t-1]+K0
+    ll<-ll+dnbinom(x[t],size=K,p=K0/(M0+K0),log=TRUE)
+    }
+    return(ll)
+  }
+  )
+}
+
+seNBD_exp<-optim(c(0.1,0.1,0.1,0.1),seNBD(x),method="L-BFGS-B",hessian=TRUE,control=list(fnscale=-1))
+r<-1/(1+exp(-seNBD_exp$par[1]))
+K0<-exp(seNBD_exp$par[2])
+M0<-exp(seNBD_exp$par[3])
+L0<-exp(seNBD_exp$par[4])
+n<-M0/(L0*(1-r))
+p=K0/(M0+K0)
+mu<-M0/(1-n)
+
+AIC<-(-seNBD_exp$value+4)*2
+BIC<--2*seNBD_exp$value+4*log(I)
+
+df <-data.frame(AIC=AIC,K0=K0,M0=M0,"M0/K0"=M0/K0,L0,r=r,mu,n=n)
+df1<-data.frame(seNBD_exp$par[1],seNBD_exp$par[2],seNBD_exp$par[3],seNBD_exp$par[4])
+return(list(df,df1))
+}
+```
+
+
+
+```{r,echo=FALSE}
+df<-data.frame()
+df1<-data.frame()
+
+for (i in 1:13) {
+df <-rbind(df,seAIC_1(data[[i]]$Defaulted)[[1]])
+df1<-rbind(df1,seAIC_1(data[[i]]$Defaulted)[[2]])
+}
+AIC_seNBD<-df[,1]
+par_seNBD<-df1
+df
+par_seNBD
+#write.csv(df,file = "seNBD.csv")
+```
+
+
+
+
+
+
+
+
+
+
+# multi dimensions
+
+
+
+
+## two dimensions
+
+$$
+X_{t+1}^{(1)}\sim\mathrm{NBD}(\mathrm{size}=K_t^{(1)},\mathrm{prob}=\frac{K_0^{(1)}}{M_0^{(1)}+K_0^{(1)}}),\qquad X_{t+1}^{(2)}\sim\mathrm{NBD}(K_t^{(2)},\frac{K_0^{(2)}}{M_0^{(2)}+K_0^{(2)}}),\quad t\ge0
+$$
+
+$$
+L_0^{(ij)}=
+\begin{pmatrix}
+a & b \\
+c & d
+\end{pmatrix}
+$$
+
+$$
+\begin{eqnarray}
+M_t^{(1)}
+&=&M_0^{(1)}+M_0^{(1)}/L_0^{(ij)}\sum_{j=1}^2\sum_{s=1}^t X_s^{(j)}\hat{d}_{t+1-s}^{(1)},\quad t\ge 1\\
+&=&M_0^{(1)}+\frac{M_0^{(1)}}{a} \sum_{s=1}^t X_s^{(1)}\hat{d}_{t+1-s}^{(1)}+\frac{M_0^{(1)}}{b} \sum_{s=1}^t X_s^{(2)}\hat{d}_{t+1-s}^{(1)}
+\end{eqnarray}
+$$
+
+$$
+\begin{eqnarray}
+M_t^{(2)}
+&=&M_0^{(2)}+M_0^{(2)}/L_0^{(ij)}\sum_{j=1}^2\sum_{s=1}^t X_s^{(j)}\hat{d}_{t+1-s}^{(2)},\quad t\ge 1\\
+&=&M_0^{(2)}+\frac{M_0^{(2)}}{c} \sum_{s=1}^t X_s^{(1)}\hat{d}_{t+1-s}^{(2)}+\frac{M_0^{(1)}}{d} \sum_{s=1}^t X_s^{(2)}\hat{d}_{t+1-s}^{(2)}
+\end{eqnarray}
+$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+### $L=$対角
+
+$$
+L_0^{(ij)}=
+\begin{pmatrix}
+a & \infty \\
+\infty & d
+\end{pmatrix}
+$$
+
+```{r,echo=FALSE,include=FALSE}
+#-------------------seNBD-------------------
+seAIC_2<-function(x){
+  
+  res<-list()
+  I<-dim(x)[1]
+  dim<-dim(x)[2]
+  
+  seNBD<- function(x,i){
+    return(function(ps){
+    
+      N<-dim(x)[1]
+      dim<-dim(x)[2]
+      ll<-0.0
+      L<-c()
+
+      r<-1/(1+exp(-ps[1]))
+      K0<-exp(ps[2])
+      M0<-exp(ps[3])
+      L[1:dim]<-exp(ps[4:(4+dim-1)])
+      L[1:dim!=i]<-Inf
+      
+      t<-1
+      K<-K0
+      ll<-ll+dnbinom(x[t,i],size=K,p=K0/(M0+K0),log=TRUE)
+      for(t in 2:(N)){
+      K<-(K-K0)*r+K0+K0/L[1]*x[(t-1),1]+K0/L[2]*x[(t-1),2]
+      ll<-ll+dnbinom(x[t,i],size=K,p=K0/(M0+K0),log=TRUE)
+      }
+      return(ll)
+    }
+    )
+  }
+
+  ini<-c(rep(0.1,(dim+3)))
+  
+  for (i in 1:2) {
+seNBD_exp<-optim(ini,seNBD(x,i),method="L-BFGS-B",hessian=TRUE,control=list(fnscale=-1))
+r<-1/(1+exp(-seNBD_exp$par[1]))
+K0<-exp(seNBD_exp$par[2])
+M0<-exp(seNBD_exp$par[3])
+L<-c()
+L[1:dim]<-exp(seNBD_exp$par[4:(4+dim-1)])
+L[1:dim!=i]<-Inf
+AIC<-(-seNBD_exp$value+length(ini))*2
+BIC<--2*seNBD_exp$value+4*log(I*dim)
+
+res[[i]]<-data.frame(AIC=AIC,K0=K0,M0=M0,"M0/K0"=M0/K0,La=L[1],Lb=L[2],r)
+}
+return(res)
+}
+```
+
+
+```{r,echo=FALSE}
+df<-data.frame(data[[1]]$Defaulted,data[[2]]$Defaulted)
+seAIC_2(df)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 相互あり
+
+
+$$
+L_0^{(ij)}=
+\begin{pmatrix}
+a & b \\
+c & d
+\end{pmatrix}
+$$
+
+```{r,echo=FALSE}
+#-------------------seNBD-------------------
+mul_seAIC_n<-function(x,a,initial){
+
+  res<-list()
+  I  <-dim( data.frame(x) )[1]
+  dim<-dim( data.frame(x) )[2]
+
+    seNBD<- function(x,i){
+      return(function(ps){
+    
+      N<-dim(x)[1]
+      dim<-dim(x)[2]
+      ll<-0.0
+      L<-c()
+
+      r<-1/(1+exp(-ps[1]))
+      K0<-exp(ps[2])
+      M0<-exp(ps[3])
+      L[1:dim]<-exp(ps[4:(4+dim-1)])
+      
+      t<-1
+      K<-K0
+      ll<-ll+dnbinom(x[t,i],size=K,p=K0/(M0+K0),log=TRUE)
+      for(t in 2:(N)){
+      K<-K0+(K-K0)*r+(K0/L)%*%x[(t-1),]
+      ll<-ll+dnbinom(x[t,i],size=K,p=K0/(M0+K0),log=TRUE)
+      }
+      return(ll)
+    }
+    )
+    }
+    df<-data.frame()
+    x<-matrix(as.matrix(x),nrow(x),ncol(x))
+for (i in 1:dim) {
+
+ini<-c(par_seNBD[a[i],1],par_seNBD[a[i],2],par_seNBD[a[i],3],rep(initial,dim))
+ini[(3+i)]<-par_seNBD[a[i],4]
+seNBD_exp<-optim(ini,seNBD(x,i),method="L-BFGS-B",hessian=TRUE,control=list(fnscale=-1))
+r<-1/(1+exp(-seNBD_exp$par[1]))
+K0<-exp(seNBD_exp$par[2])
+M0<-exp(seNBD_exp$par[3])
+    L<-c()
+L[1:dim]<-exp(seNBD_exp$par[4:(4+dim-1)])
+
+AIC<-(-seNBD_exp$value+length(ini))*2
+BIC<--2*seNBD_exp$value+length(ini)*log(I*dim)
+
+df1<-data.frame(AIC=AIC,K0=K0,M0=M0,"M0/K0"=M0/K0,L[1],L[2],L[3],r)#,L[4],L[5],L[6],L[7],L[8],L[9],L[10],L[11],L[12],L[13],r)[1,]
+df<-rbind(df,df1)
+}
+return(df)
+}
+```
+
+
+```{r,echo=FALSE}
+#-------------------seNBD-------------------
+seAIC_n<-function(x){
+
+  res<-list()
+  I  <-dim( data.frame(x) )[1]
+  dim<-dim( data.frame(x) )[2]
+
+    seNBD<- function(x,i){
+      return(function(ps){
+    
+      N<-dim(x)[1]
+      dim<-dim(x)[2]
+      ll<-0.0
+      L<-c()
+
+      r<-1/(1+exp(-ps[1]))
+      K0<-exp(ps[2])
+      M0<-exp(ps[3])
+      L[1:dim]<-exp(ps[4:(4+dim-1)])
+      
+      t<-1
+      K<-K0
+      ll<-ll+dnbinom(x[t,i],size=K,p=K0/(M0+K0),log=TRUE)
+      for(t in 2:(N)){
+      K<-K0+(K-K0)*r+(K0/L)%*%x[(t-1),]
+      ll<-ll+dnbinom(x[t,i],size=K,p=K0/(M0+K0),log=TRUE)
+      }
+      return(ll)
+    }
+    )
+    }
+    df<-data.frame()
+    x<-matrix(as.matrix(x),nrow(x),ncol(x))
+          for (i in 1:dim) {
+ini<-c(par_seNBD[i,1],par_seNBD[i,2],par_seNBD[i,3],rep(0.000001,dim))
+ini[3+i]<-par_seNBD[i,4]
+seNBD_exp<-optim(ini,seNBD(x,i),method="L-BFGS-B",hessian=TRUE,control=list(fnscale=-1))
+r<-1/(1+exp(-seNBD_exp$par[1]))
+K0<-exp(seNBD_exp$par[2])
+M0<-exp(seNBD_exp$par[3])
+    L<-c()
+L[1:dim]<-exp(seNBD_exp$par[4:(4+dim-1)])
+
+AIC<-(-seNBD_exp$value+length(ini))*2
+BIC<--2*seNBD_exp$value+length(ini)*log(I*dim)
+
+df1<-data.frame(AIC=AIC,K0=K0,M0=M0,"M0/K0"=M0/K0,L[1],L[2],L[3],L[4],L[5],L[6],r)#,L[4],L[5],L[6],L[7],L[8],L[9],L[10],L[11],L[12],L[13],r)[1,]
+df<-rbind(df,df1)
+}
+return(df)
+}
+```
+
+
+```{r,echo=FALSE}
+df<-data.frame(data[[1]]$Defaulted,data[[2]]$Defaulted)
+result<-seAIC_n(df)
+result
+```
+
+```{r,echo=FALSE,eval=FALSE}
+int2<-c()
+
+for(i in 1:choose(13,2)){
+a<-combn(x=c(1:13),m=2)[,i][1]
+b<-combn(x=c(1:13),m=2)[,i][2]
+df<-data.frame(data[[a]]$Defaulted,data[[b]]$Defaulted)
+
+res<-seAIC_n(df)
+if ( res[1,1]<=AIC_seNBD[a] ){
+  int2<-rbind(int2,c(combn(x=c(1:13),m=2)[,i],res[1,1]-AIC_seNBD[a] ))
+}
+
+}
+```
+
+
+
+```{r,echo=FALSE,eval=FALSE}
+dim<-13
+inter<-c()
+
+
+for(i in 1:choose(13,dim) ){
+df<-c()
+a<-c()
+initial<-0.000000001
+comb<-combn(x=c(1:13),m=dim)
+
+for (j in 1:dim) {
+    a[j]<-comb[,i][j]
+    df<-cbind(df,data[[a[j]]]$Defaulted)
+}
+
+res<-try(mul_seAIC_n(df,a,initial))
+
+if(class(res)=="try-error"){error<-1} #optimでエラーなら再度
+else{error<-res[,1]}                  #optimでエラーでなければAICをエラーに代入
+
+k<-0
+l<-1
+
+while( TRUE%in%(error<=32) ){         #エラーに代入したものが１つでも32以下ならやりなおし
+  initial<-initial*10**(1)
+  k<-k+1
+  res<-try(mul_seAIC_n(df,a,initial)) #初期値を１０倍
+  if(class(res)=="try-error"){error<-1}#optimでエラーなら再度
+  else{error<-res[,1]}                 #optimでエラーでなければAICをエラーに代入
+  
+  if(k==10){                           #初期値に１０を10回乗じてもエラーが出るなら並びを変える
+  l<-l+1
+  a[1:dim]<-a [c(permutations(dim,dim,1:dim)[l,])]
+  df      <-df[,c(permutations(dim,dim,1:dim)[l,])]
+  k<-0;initial<-0.000000001
+  if(l==dim(permutations(dim,dim,1:dim))[1]){print("stop")}
+  }
+}
+
+for (j in 1:dim) {                    #エラーでなければここで一次元と比べる
+  if ( res[j,1]<=AIC_seNBD[a[j]] ){
+  inter<-rbind(inter,c(a[j],comb[,i][comb[,i]!=a[j]],res[j,1]-AIC_seNBD[a[j]] ))
+  }
+}
+}
+inter
+```
+
+
+
+```{r}
+#save(inter2,inter3,inter4,inter5,inter6,inter7,inter8,inter9,inter10,inter11,inter12,inter13,file = "interactive.RData")
+load("interactive.RData")
+```
+
+
+```{r}
+inter<-list()
+inter[[ 2]]<-inter2
+inter[[ 3]]<-inter3
+inter[[ 4]]<-inter4
+inter[[ 5]]<-inter5
+inter[[ 6]]<-inter6
+inter[[ 7]]<-inter7
+inter[[ 8]]<-inter8
+inter[[ 9]]<-inter9
+inter[[10]]<-inter10
+inter[[11]]<-inter11
+inter[[12]]<-inter12
+```
+
+```{r}
+best<-list()
+for (j in 2:12) {
+b<-inter[[j]]
+a<-c()
+  for (i in 1:13) {
+    if(TRUE%in%(b[,1]%in%i)){
+      a<-rbind(a,b[b[,1]%in%i,][b[b[,1]%in%i,][,dim(b)[2]]==min(b[b[,1]%in%i,][,dim(b)[2]])])
+    }
+  else next
+  }
+best[[j]]<-a
+}
+best[[13]]<-inter13
+head(best,2)
+```
+
+
+
+```{r}
+No1<-list()
+j<-2
+for (i in 1:13) {
+  if( i%in%best[[j]][best[[j]][,1]==i,] ){
+    No1[[i]]<-best[[j]][best[[j]][,1]==i,]
+  }
+  else next
+}
+for(j in 2:13){
+  for (i in 1:13) {
+    if( i%in%best[[j]][,1] ){
+    if(No1[[i]][length(No1[[i]])]>best[[j]][best[[j]][,1]==i ,dim(best[[j]])[2]]) {
+      No1[[i]]<-best[[j]][best[[j]][,1]==i,]
+    }
+    else next}
+    else next
+  }
+}
+No1
+```
+
+
+```{r}
+result<-c()
+for (i in 1:13) {
+  df<-c()
+  for (j in No1[[i]][1:(length(No1[[i]])-1)]) {
+    df<-cbind(df,data[[j]]$Defaulted)
+  }
+  result<-rbind(result,seAIC_n(df)[1,])
+}
+result
+#write.csv(result,file = "best.csv")
+```
+
+```{r}
+NBD_No1<-No1
+NBD_result<-result
+#save(NBD_No1,NBD_result,file = "No1_NBD.RData")
+```
+
+```{r}
+ matpow <- function(x, pow) {
+   y <- eigen(x)
+   y$vectors %*% diag( (y$values)^pow ) %*% solve(y$vectors)
+ }
+```
+
+
+
+```{r}
+df<-c()
+df3<-c()
+x<-c()
+  for (j in 1:13 ) {
+    x<-cbind(x,data[[j]]$Defaulted)
+  }
+  N  <-dim(x)[1]
+  dim<-dim(x)[2]
+  r<-c();M0<-c();Mt<-c();T_i<-c();L<-matrix(Inf,nrow=dim,ncol=dim)
+  
+  for (j in 1:13 ) {
+    r[j]  <-result$r[j]
+    M0[j] <-result$M0[j]
+    T_i[j]<-1/(1-r[j])
+    for (k in 1:(length(No1[[j]])-1)) {
+      L[j,No1[[j]][k]]<-result[j,(4+k)]
+    }
+    t<-1
+    Mt[j]<-M0[j]
+    for(t in 2:(N+1)){
+      Mt[j]<-M0[j]+(Mt[j]-M0[j])*r[j]+(M0[j]/L[j,])%*%x[(t-1),]
+    }
+  }
+
+  S <-M0/L*T_i       #S
+  S_<-M0/L          #Sハット
+r
+#V_inf
+    aa<-matrix(0,dim,dim)
+    for (i in 1:50000) {
+   aa<-aa+matpow((diag(r)+S_),i)
+    }
+    
+  df2<-solve((diag(dim)-S))%*%S
+  df22<-S_%*%aa
+  
+  Re(df22);Re(df2)
+  #write.csv(df2,file = "v_impact.csv")
+```
+
+```{r}
+name<-c("Building","Consumer","Energy","FI","Health","Hitech",
+           "Insurance","Leisure","Metal","Real Estate","Telecom","Transport","Utility")
+```
+
+```{r}
+for (i in 1:13) {
+barplot(Re(df2)[i,],names.arg=name,las = 2,main = name[i])
+}
+barplot(colSums(Re(df2))/13,names.arg=name,las = 2,main = "")
+```
+
+
+
+```{r,eval=FALSE}
+df<-c()
+for (i in 1:13) {
+df1<-c()
+for (j in 1:(length(No1[[i]])-1) ) {
+  df1<-cbind(df1,mean(data[[No1[[i]][j]]]$Defaulted))
+}
+  df<-rbind(df,c(df1,rep(NA,(5-length(df1)))))
+
+}
+df
+sum(data[[8]]$Defaulted)
+#write.csv(df,file = "ave.csv")
+```
+
+
+
+
+
+
+
+
+```{r,fig.width=12,fig.height=10}
+par(mfrow=c(2,2))
+par(oma = c(0, 0, 0, 0)); par(mar = c(4, 4, 3, 1))
+mat<-matrix(0,nrow=13,ncol=13)
+wid<-matrix(0,nrow=13,ncol=13)
+
+for(i in 1:13){
+for (j in c(head(No1[[i]],-1))) {
+mat[i,j]<-1
+}  
+}
+g1<-graph.adjacency(t(mat))
+E(g1)$width<-c(S)[c(S)!=0]*4
+E(g1)$arrow.size<-0.8
+E(g1)$label=round(c(S)[c(S)!=0],3)
+E(g1)$label.color="blue"
+V(g1)$name<-name
+V(g1)$color="#E6E6E6"
+V(g1)$label.color="blue"
+V(g1)$frame.color="gray"
+
+plot(g1,vertex.shape="circle",vertex.size=35,vertex.label.cex=1,
+     edge.curved=0.25,edge.label="",layout=layout.circle)
+
+
+for (i in 1:13) {
+#plot(induced_subgraph(g1,head(No1[[i]],-1)),
+plot(induced_subgraph(g1,unique(c(V(g1)[mat[i,]==1],V(g1)[mat[,i]==1]))),
+     vertex.shape="circle",vertex.size=30,vertex.label.cex=0.9,vertex.frame.color="gray",
+     edge.curved=0.25)
+}
+#i<-2
+#c(V(g1)[mat[i,]==1],V(g1)[mat[,i]==1])
+```
+
+
+```{r,fig.width=12,fig.height=10}
+par(mfrow=c(2,2))
+par(oma = c(0, 0, 0, 0)); par(mar = c(4, 4, 3, 1))
+for (i in 1:13) {
+
+a<-matrix(0,dim,dim);b<-matrix(0,dim,dim)
+a[i,]<-mat[i,];a[,i]<-mat[,i]
+b[i,]<-S  [i,];b[,i]<-S  [,i]
+
+g<-graph.adjacency(t(a))
+
+E(g)$width<-c(b)[c(b)!=0]*4
+E(g)$arrow.size<-0.9
+E(g)$label=round(c(b)[c(b)!=0],3)
+E(g)$label.color="blue"
+V(g)$name<-name
+V(g)$color="#E6E6E6"
+V(g)$label.color="blue"
+V(g)$frame.color="gray"
+layout<-layout_as_star(g,center=V(g)[i])
+plot(g,layout=layout,vertex.size=30,vertex.label.cex=0.9,edge.curved=0.2)
+}
+```
+
+
+
+
+

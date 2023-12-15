@@ -1,0 +1,506 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=FALSE}
+library(MASS)
+rm(list=ls())
+```
+
+```{r,echo=FALSE}
+getwd()
+name<-c("Moody_1920","Moody_1920_SG","Moody_1920_IG",
+               "S&P_1981","S&P_1981_SG","S&P_1981_IG",
+               "Moody_1981","Moody_1981_SG","Moody_1981_IG",
+               "S&P_1990","S&P_1990_SG","S&P_1990_IG",
+               "Moody_1990","Moody_1990_SG","Moody_1990_IG")
+```
+
+
+```{r fig.width=12,fig.height=7,echo=FALSE}
+#【自己相関係数】
+par(mfrow=c(3,3))
+par(oma = c(0, 0, 0, 0)); par(mar = c(4, 4, 3, 1))
+
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default2.csv",header = T)
+b<-a$All.default[1:(length(a$All.default)-2)]
+ts.plot(b,main=name[1])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$SG.default[1:(length(a$SG.default)-2)]
+ts.plot(b,main=name[2])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$IG.default[1:(length(a$IG.default)-2)]
+ts.plot(b,main=name[3])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default1.csv",header = T)
+b<-a$ALL.default[1:(length(a$ALL.default)-2)]
+ts.plot(b,main=name[4])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$SG.default[1:(length(a$SG.default)-2)]
+ts.plot(b,main=name[5])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$IG.default[1:(length(a$IG.default)-2)]
+ts.plot(b,main=name[6])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default2.csv",header = T)
+a<-a[which(a$Year>=1981),]
+b<-a$All.default[1:(length(a$All.default))]
+ts.plot(b,main=name[7])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$SG.default[1:(length(a$SG.default))]
+ts.plot(b,main=name[8])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$IG.default[1:(length(a$IG.default))]
+ts.plot(b,main=name[9])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default1.csv",header = T)
+a<-a[which(a$Year>=1990),]
+b<-a$ALL.default[1:(length(a$ALL.default)-1)]
+ts.plot(b,main=name[10])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$SG.default[1:(length(a$SG.default)-1)]
+ts.plot(b,main=name[11])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$IG.default[1:(length(a$IG.default)-1)]
+ts.plot(b,main=name[12])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default2.csv",header = T)
+a<-a[which(a$Year>=1990),]
+b<-a$All.default[1:(length(a$All.default))]
+ts.plot(b,main=name[13])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$SG.default[1:(length(a$SG.default))]
+ts.plot(b,main=name[14])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+b<-a$IG.default[1:(length(a$IG.default))]
+ts.plot(b,main=name[15])
+acf(b,lag.max = length(b),main="")
+pacf(b,lag.max = length(b),main="")
+```
+
+```{r,echo=FALSE}
+
+f<- function(fun){
+
+  ii<-length(fun(c(1,1)))
+
+  c<-list()
+
+  for (i in 1:ii){
+      c[[i]]<-data.frame()
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default2.csv",header = T)
+b<-a$All.default[1:(length(a$All.default)-2)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$SG.default[1:(length(a$SG.default)-2)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$IG.default[1:(length(a$IG.default)-2)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default1.csv",header = T)
+b<-a$ALL.default[1:(length(a$ALL.default)-2)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$SG.default[1:(length(a$SG.default)-2)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$IG.default[1:(length(a$IG.default)-2)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default2.csv",header = T)
+a<-a[which(a$Year>=1981),]
+b<-a$All.default[1:(length(a$All.default))]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$SG.default[1:(length(a$SG.default))]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$IG.default[1:(length(a$IG.default))]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default1.csv",header = T)
+a<-a[which(a$Year>=1990),]
+b<-a$ALL.default[1:(length(a$ALL.default)-1)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$SG.default[1:(length(a$SG.default)-1)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$IG.default[1:(length(a$IG.default)-1)]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+
+a<-read.csv("C:/Users/ninja/OneDrive/デスクトップ/data/default2.csv",header = T)
+a<-a[which(a$Year>=1990),]
+b<-a$All.default[1:(length(a$All.default))]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$SG.default[1:(length(a$SG.default))]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+b<-a$IG.default[1:(length(a$IG.default))]
+c[[i]]<-rbind(c[[i]],fun(b)[[i]])
+
+rownames(c[[i]])<-name
+}
+  return(c)
+}
+
+```
+
+## Hawkes
+
+$$
+X_t\sim \mathrm{Po}(\hat\theta_{t-1}x)
+$$
+
+## NBD
+
+$$
+X_{t+1}\sim \mathrm{NBD}\left(\alpha=\frac{\nu_{t}}{\omega},p=\frac{1}{\omega x+1}\right),t\ge0
+$$
+$$
+\nu_t=\nu_0+\sum_{s=1}^{t} X_sd_{t-s}
+$$
+
+$$
+d_t=d_0r^t\\
+\begin{eqnarray}
+\sum^\infty_{t=1}d_t&=&n\quad,(0\le n\lt 1)\\
+d_0\frac{1}{1-r}&=&n\\
+d_0&=&n(1-r)
+\end{eqnarray}
+$$
+
+```{r}
+AIC_fun<-function(x){
+  
+I<-length(x)
+
+#------------------Hawkes------------------
+ll_Pois_d0_r<- function(x){
+  return(function(ps){
+    N<-length(x)
+    ll<-0.0
+    lam<-exp(ps[1])
+    r<-1/(1+exp(-ps[2]))
+    d0<-exp(ps[3])
+    t<-1
+    alpha_t<-lam
+    ll<-dpois(x[t],alpha_t,log=TRUE)
+    for(t in 2:N){
+      alpha_t<-(alpha_t-lam)*r+d0*x[t-1]+lam
+      ll<-ll+dpois(x[t],alpha_t,log=TRUE)
+    }
+    return(ll)
+  }
+  )
+}
+
+exp_par<-optim(c(0.0,0.0,0.0),ll_Pois_d0_r(x),method="L-BFGS-B",control = list(fnscale = -1),hessian = TRUE)
+
+
+lam<-exp(exp_par$par[1])
+r<-1/(1+exp(-exp_par$par[2]))
+d0<-exp(exp_par$par[3])
+n<-d0*(1-r**(length(I)))/(1-r)
+
+AIC<--2*exp_par$value+2*3 
+BIC<--2*exp_par$value+3*log(I)
+
+df1<-data.frame(AIC=AIC,alpha=lam,beta=-log(r),mu=lam/(1-n),n=n,d0,r)
+  
+#-------------------NBD-------------------
+
+ll_NBD_d0_r<- function(x){
+  return(function(ps){
+    N<-length(x)
+    ll<-0.0
+    lam<-exp(ps[1])
+    p<-1/(1+exp(-ps[2]))
+    n<-1/(1+exp(-ps[3]))
+    r<-1/(1+exp(-ps[4]))
+    d0<-n*(1-r)/(1/p-1)
+    
+    t<-1
+    alpha_t<-lam
+    ll<-ll+dnbinom(x[t],size=alpha_t,p=p,log=TRUE)
+    for(t in 2:(N)){
+    alpha_t<-(alpha_t-lam)*r+d0*x[t-1]+lam
+    ll<-ll+dnbinom(x[t],size=alpha_t,p=p,log=TRUE)
+    }
+    return(ll)
+  }
+  )
+}
+
+NBD_exp<-optim(c(0.0,0.0,0.0,0.0),ll_NBD_d0_r(x),method="L-BFGS-B",hessian=TRUE,control=list(fnscale=-1))
+  lam<-exp(NBD_exp$par[1])
+  p<-1/(1+exp(-NBD_exp$par[2]))
+  n<-1/(1+exp(-NBD_exp$par[3]))
+  r<-1/(1+exp(-NBD_exp$par[4]))
+  d0<-n*(1-r)/(1/p-1)
+  mu<-lam*(1/p-1)/(1-n)
+AIC<-(-NBD_exp$value+4)*2
+BIC<--2*NBD_exp$value+4*log(I)
+
+df2<-data.frame(AIC=AIC,K0=lam,M0=lam*(1/p-1),"M0/K0"=(1/p-1),L0=lam*(1/p-1)/(n*(1-r)),beta=-log(r),mu=mu,n)
+
+#-------------------NBD-------------------
+
+ll_NBD_d0_r<- function(x){
+  return(function(ps){
+    N<-length(x)
+    ll<-0.0
+    lam<-exp(ps[1])
+    n<-1/(1+exp(-ps[2]))
+    r<-1/(1+exp(-ps[3]))
+    p<-1/(1+n)
+    d0<-n*(1-r)/(1/p-1)
+
+    t<-1
+    alpha_t<-lam
+    ll<-ll+dnbinom(x[t],size=alpha_t,p=p,log=TRUE)
+    for(t in 2:(N)){
+    alpha_t<-(alpha_t-lam)*r+d0*x[t-1]+lam
+    ll<-ll+dnbinom(x[t],size=alpha_t,p=p,log=TRUE)
+    }
+    return(ll)
+  }
+  )
+}
+
+NBD_exp<-optim(c(0.0,0.0,0.0),ll_NBD_d0_r(x),method="L-BFGS-B",hessian=TRUE,control=list(fnscale=-1))
+  lam<-exp(NBD_exp$par[1])
+  n<-1/(1+exp(-NBD_exp$par[2]))
+  r<-1/(1+exp(-NBD_exp$par[3]))
+  p<-1/(1+n)
+  mu<-lam*(1/p-1)/(1-n)
+AIC<-(-NBD_exp$value+3)*2
+BIC<--2*NBD_exp$value+3*log(I)
+
+df3<-data.frame(AIC=AIC,K0=lam,M0=lam*(1/p-1),"M0/K0"=(1/p-1),beta=-log(r),mu=mu,n)
+
+#---------------------------------------
+
+return( list(df1,df2,df3) )
+}
+```
+
+```{r}
+result<-f(AIC_fun)
+result
+c<-data.frame(result[[1]])
+d<-data.frame(result[[2]])
+e<-data.frame(result[[3]])
+
+```
+
+```{r}
+#久門さんの表と同じ並びにする
+name1<-c()
+ha<-data.frame()
+NBD_ex<-data.frame()
+NBD_ex1<-data.frame()
+ii<-0
+for (j in 1:3){
+for (i in 1:5) {
+  ii<-ii+1
+   name1[ii]<-name[((i-1)*3+j)]
+   ha<-rbind(ha,c[((i-1)*3+j),])
+   NBD_ex<-rbind(NBD_ex,d[((i-1)*3+j),])
+   NBD_ex1<-rbind(NBD_ex1,e[((i-1)*3+j),])
+  }
+}
+ha;NBD_ex;NBD_ex1
+```
+
+```{r}
+AIC=data.frame(Hawkes_AIC=ha$AIC,NBD_AIC=NBD_ex$AIC,NBD1_AIC=NBD_ex1$AIC)
+rownames(AIC)<-name1
+AIC
+par<-data.frame(Hawkes_lambda=ha$alpha,Hawkes_beta=ha$beta,Hawkes_n=ha$n,Hawkes_mu=ha$mu,
+                NBD_K0=NBD_ex$K0,"NBD_K0/M0"=NBD_ex$M0.K0,NBD_L0=NBD_ex$L0,NBD_beta=NBD_ex$beta,NBD_mu=NBD_ex$mu,
+                NBD1_K0=NBD_ex1$K0,"NBD1_K0/M0"=NBD_ex1$M0.K0,NBD1_beta=NBD_ex1$beta,NBD1_mu=NBD_ex1$mu)
+rownames(par)<-name1
+par
+```
+
+
+```{r}
+AIC=data.frame(Hawkes_AIC=round(ha$AIC,1),NBD_AIC=round(NBD_ex$AIC,1),NBD1_AIC=round(NBD_ex1$AIC,1))
+rownames(AIC)<-name1
+AIC
+par<-data.frame(Hawkes_lambda=round(ha$alpha,2),Hawkes_beta=round(ha$beta,2),Hawkes_n=round(ha$n,2),Hawkes_mu=round(ha$mu,1),
+                NBD_K0=round(NBD_ex$K0,2),"NBD_M0/K0"=round(NBD_ex$M0.K0,2),NBD_beta=round(NBD_ex$beta,2),NBD_mu=round(NBD_ex$mu,1),
+                NBD1_K0=round(NBD_ex1$K0,2),"NBD1_M0/K0"=round(NBD_ex1$M0.K0,2),NBD1_beta=round(NBD_ex1$beta,2),NBD1_mu=round(NBD_ex1$mu,1))
+rownames(par)<-name1
+par
+```
+
+```{r}
+#write.csv(ha,file = "Hawkes.csv")
+#write.csv(NBD_ex,file = "NBD_exp.csv")
+#write.csv(NBD_po,file = "NBD_pow.csv")
+#write.csv(AIC,file = "AIC.csv")
+#write.csv(par,file = "par.csv")
+```
+
+### NBD($L_0\to \infty,\ \omega\to0$)
+
+$$
+X_{}\sim\mathrm{NBD}(\alpha,p)\Longleftrightarrow\mathrm{Po}(\hat\lambda),\ \hat\lambda\sim\Gamma(\alpha=\alpha,\beta=\frac{p}{1-p})
+$$
+
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ $x=1$
+
+$$
+X_{}\sim\mathrm{NBD}(\alpha=\frac{\theta}{\omega},p=\frac{1}{\omega+1})\Longleftrightarrow\mathrm{Po}(\hat\lambda),\ \hat\lambda\sim\Gamma(\alpha=\frac{\theta}{\omega},\beta=\frac{1}{\omega})\\
+\begin{eqnarray}
+\qquad \alpha&=&\frac{\theta}{\omega}\\ \therefore K_0&=&\alpha\qquad(\because \theta=M_0,\ \omega=\frac{M_0}{K_0})\\
+\ \\
+\beta&=&\frac{1}{\omega}\\
+\therefore\frac{M_0}{K_0}&=&\frac{1}{\beta}=\frac{1-p}{p}
+\end{eqnarray}
+$$
+<br>
+$$
+\bar v=\alpha\frac{1-p}p=M_0
+$$
+
+```{r}
+AIC_fun<-function(x){
+  
+I<-length(x)
+
+#-------------------NBD-------------------
+
+NBD<- function(x){
+  return(function(ps){
+    N<-length(x)
+    ll<-0.0
+    lam<-exp(ps[1])
+    p<-1/(1+exp(-ps[2]))
+    t<-1
+    ll<-ll+dnbinom(x[t],size=lam,p=p,log=TRUE)
+    for(t in 2:(N)){
+    ll<-ll+dnbinom(x[t],size=lam,p=p,log=TRUE)
+    }
+    return(ll)
+  }
+  )
+}
+
+NBD_exp<-optim(c(0.0,0.0),NBD(x),method="L-BFGS-B",hessian=TRUE,control=list(fnscale=-1))
+  lam<-exp(NBD_exp$par[1])
+  p<-1/(1+exp(-NBD_exp$par[2]))
+  mu<-lam*(1/p-1)
+AIC<-(-NBD_exp$value+2)*2
+BIC<--2*NBD_exp$value+2*log(I)
+
+df1<-data.frame(AIC=AIC,K0=lam,M0=lam*(1/p-1),"M0/K0"=(1/p-1),mu=mu)
+
+
+return( list(df1) )
+
+}
+```
+
+```{r}
+result<-f(AIC_fun)
+result
+d<-data.frame(result[[1]])
+
+```
+
+```{r}
+name1<-c()
+PG2<-data.frame()
+
+ii<-0
+for (j in 1:3){
+for (i in 1:5) {
+  ii<-ii+1
+   name1[ii]<-name[((i-1)*3+j)]
+   PG2<-rbind(PG2,d[((i-1)*3+j),])
+  }
+}
+PG2
+```
+
+```{r}
+#write.csv(PG2,file = "Po_Ga.csv")
+```
+
+```{r}
+AIC_fun<-function(x){
+  I      <-length(x)
+
+#-------------------1------------------
+
+res<-glm(x~1, family="poisson")
+
+
+
+df1<-data.frame(AIC=AIC(res),lam=exp(res$coefficients))
+  
+#-------------------2-------------------
+
+res<-fitdistr(x, densfun = "negative binomial")
+alpha<-res$estimate[1]
+mu<-res$estimate[2]
+p<-alpha/(alpha+mu)
+
+df2<-data.frame(AIC=AIC(res),alpha=alpha,p=p,mu=mu)
+
+#-------------------2-------------------
+
+ll_NBD_d0_r<- function(x){
+  return(function(ps){
+    N<-length(x)
+    ll<-0.0
+    lam<-exp(ps[1])
+    p<-1/(1+exp(-ps[2]))
+
+    for(t in 1:(N)){
+    ll<-ll+dnbinom(x[t],size=lam,p=p,log=TRUE)
+    }
+    return(ll)
+  }
+  )
+}
+
+NBD_exp<-optim(c(0.0,0.0),ll_NBD_d0_r(x),hessian=TRUE,control=list(fnscale=-1))
+  lam<-exp(NBD_exp$par[1])
+  p<-1/(1+exp(-NBD_exp$par[2]))
+  AIC<-(-NBD_exp$value+2)*2
+  BIC<--2*NBD_exp$value+2*log(I)
+
+df3<-data.frame(AIC=AIC,BIC=BIC,alpha=lam,"p"=p,mu=lam*(1-p)/p)
+
+#------------------------------------------------------
+return( list(df1,df2,df3) )
+}
+```
+
+```{r}
+f(AIC_fun)
+```
+
+
+
+
+
+

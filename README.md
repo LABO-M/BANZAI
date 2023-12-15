@@ -6,21 +6,26 @@
 2024卒業　20S1066　坂西和也　　
 
 # ディレクトリの説明
-## pre_studys
+## masuda 
+増田先生の研究室で行った実験データに関するプログラムです．
+### pre_studys
 卒業研究をまとめる前の煩雑なプログラムです．
 
-## progress
+### progress
 卒号研究の進度をまとめたものです．
 
-## review
+### review
 卒業研究に関する統計モデルや機械学習モデルの説明です．
 
-## studys
+### studys
 卒業研究を整理したプログラムです．
 
 Google Colaboratoryで実行できるようにしてあります．
 
 ただし，パスの変更はご自身で行ってください．
+
+## mori
+守先生の研究室で行った勉強に関するプログラムです．
 
 # メスバウワー実験に関する参考文献
 ### Synchrotron-Radiation-Based Energy-Domain Mössbauer Spectroscopy, Nuclear Resonant Inelastic Scattering, and Quasielastic Scattering Using Mössbauer Gamma Rays
